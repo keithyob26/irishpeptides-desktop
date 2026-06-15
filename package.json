@@ -12,6 +12,7 @@
     "appId": "com.irishpeptides.jarvis",
     "productName": "Irish Peptides Jarvis",
     "copyright": "Copyright 2026 Irish Peptides & Nutrition",
+    "icon": "assets/icon.ico",
     "directories": {
       "output": "dist"
     },
