@@ -1,0 +1,84 @@
+name: Rebuild Electron Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version being built'
+        required: false
+        default: ''
+      triggered_by:
+        description: 'What triggered this build'
+        required: false
+        default: 'manual'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    name: Build Windows installer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build installer (no after-build hook in CI)
+        run: npx electron-builder --win --publish never
+        env:
+          # Disable the afterAllArtifactBuild hook in CI (no local Drive)
+          SKIP_AFTER_BUILD: 'true'
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: irish-peptides-jarvis-installer-${{ github.run_number }}
+          path: dist/*.exe
+          retention-days: 30
+
+      - name: Create GitHub Release (on version input)
+        if: ${{ inputs.version != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: Irish Peptides Jarvis v${{ inputs.version }}
+          body: |
+            Desktop app installer for Irish Peptides Jarvis v${{ inputs.version }}.
+            Triggered by: ${{ inputs.triggered_by }}
+          files: dist/*.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify Notion of rebuild
+        if: always()
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+        shell: bash
+        run: |
+          STATUS="${{ job.status }}"
+          VERSION="${{ inputs.version }}"
+          TRIGGERED="${{ inputs.triggered_by }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
+
+          if [ "$STATUS" = "success" ]; then
+            EMOJI="✅"
+          else
+            EMOJI="❌"
+          fi
+
+          MSG="$EMOJI Electron rebuild $STATUS — v${VERSION:-unknown} — triggered by $TRIGGERED — $TIMESTAMP"
+
+          curl -s -X PATCH "https://api.notion.com/v1/blocks/37da0eb7-e3ea-819e-af5b-e76db92a7c8c/children" \
+            -H "Authorization: Bearer $NOTION_API_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Notion-Version: 2022-06-28" \
+            -d "{\"children\":[{\"object\":\"block\",\"type\":\"to_do\",\"to_do\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"$MSG\"}}],\"checked\":true}}]}"
