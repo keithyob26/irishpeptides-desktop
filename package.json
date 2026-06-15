@@ -1,0 +1,41 @@
+{
+  "name": "irishpeptides-jarvis",
+  "version": "1.0.0",
+  "description": "Irish Peptides Jarvis — Desktop Command Centre",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win",
+    "build:dir": "electron-builder --win --dir"
+  },
+  "build": {
+    "appId": "com.irishpeptides.jarvis",
+    "productName": "Irish Peptides Jarvis",
+    "copyright": "Copyright 2026 Irish Peptides & Nutrition",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**"
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Irish Peptides Jarvis"
+    }
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}
