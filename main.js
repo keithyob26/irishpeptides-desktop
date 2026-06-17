@@ -8,6 +8,7 @@ const CHECK_INTERVAL = 30000
 
 let mainWin = null
 let isLocal = false
+let syncInterval = null
 
 function checkLocal() {
   return new Promise(resolve => {
@@ -25,13 +26,13 @@ function baseUrl() {
 }
 
 function updateTitle() {
-  if (!mainWin) return
+  if (!mainWin || mainWin.isDestroyed()) return
   const mode = isLocal ? 'Local' : 'Cloud'
   mainWin.setTitle(`Irish Peptides Jarvis — ${mode}`)
 }
 
 async function syncMode() {
-  if (!mainWin) return
+  if (!mainWin || mainWin.isDestroyed()) return
   const local = await checkLocal()
   if (local === isLocal) return
   isLocal = local
@@ -70,7 +71,9 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  const navigate = route => () => mainWin.webContents.loadURL(baseUrl() + route)
+  const navigate = route => () => {
+    if (mainWin && !mainWin.isDestroyed()) mainWin.webContents.loadURL(baseUrl() + route)
+  }
 
   const menu = Menu.buildFromTemplate([
     {
@@ -113,7 +116,13 @@ function createWindow() {
   ])
   Menu.setApplicationMenu(menu)
 
-  setInterval(syncMode, CHECK_INTERVAL)
+  syncInterval = setInterval(syncMode, CHECK_INTERVAL)
+
+  mainWin.on('closed', () => {
+    clearInterval(syncInterval)
+    syncInterval = null
+    mainWin = null
+  })
 }
 
 app.whenReady().then(() => {
